@@ -1,0 +1,17 @@
+Agent to CRM routing layer:
+Build an agent to crm routing layer that is a cetnral platform for all the agentic application (mock agent 1,2,3)
+in my company to talk to the crm, our crm is mock crm 1, 2, 3
+we need to give the teams that build the agentic applications a singular client library
+which connects with an api which talk to all these mock crms.
+the crms have different apis, and the routing layer api contains the code to convert incoming requests 
+from agentic applications to the format that the crm providers api's exepect
+
+first start by creating the mock agentic applications (just skeletal code with a tool calling ability)
+then create the mock crms with different api's with different fields
+then lets create the rounting layer
+
+
+THe routing layer has 
+1 common api for all agenic apps
+2. individual clients for all crms 
+3. converts from common api to individual clients
