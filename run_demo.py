@@ -166,6 +166,12 @@ def run_demo() -> int:
         agent = BillingAgent(client=client, target_crm=crm)
         print(f"\n  {YELLOW}▶ Running BillingAgent against {crm.upper()}...{RESET}")
 
+        # Tool 1: get_orders by contact ID
+        orders = agent.execute_tool("get_orders", {"contact_id": contact_id})
+        assert len(orders) >= 1
+        assert orders[0].id == order_id
+        print_success(f"Tool 'get_orders' for contact {contact_id} succeeded -> Located {len(orders)} order(s)")
+
         order = agent.execute_tool("check_order", {"order_id": order_id})
         assert order.id == order_id
         print_success(f"Verified Order {order.id} total: ${order.total_amount:.2f}")
@@ -183,7 +189,7 @@ def run_demo() -> int:
         print_success(f"Tool 'take_payment' succeeded -> Payment ID: {payment.id} | Amount: ${payment.amount:.2f} | Status: {payment.status}")
         print_detail("Payment Method", payment.payment_method)
 
-        total_checks += 2
+        total_checks += 3
 
     # =========================================================================
     # Step 4: Canonical Error Normalization & Self-Healing
@@ -264,7 +270,7 @@ def run_demo() -> int:
         )
         assert recovery.status == "completed"
         print_success(f"Agent recovered gracefully with alternative method '{valid_method}' -> Status: {BOLD}{recovery.status}{RESET}")
-        total_checks += 2
+        total_checks += 3
 
     # =========================================================================
     # Final Summary

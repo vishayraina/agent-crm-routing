@@ -73,6 +73,14 @@ def create_contact(payload: CRM1ContactCreate):
     return record
 
 
+@router.get("/orders")
+def list_or_search_orders(contact_id: Optional[str] = Query(default=None)):
+    orders = list(data.crm1_data["orders"].values())
+    if contact_id:
+        orders = [o for o in orders if o.get("contact_id") == contact_id]
+    return orders
+
+
 @router.get("/orders/{order_id}")
 def get_order(order_id: str):
     order = data.crm1_data["orders"].get(order_id)

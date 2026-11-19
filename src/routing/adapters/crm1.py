@@ -150,6 +150,11 @@ class CRM1Adapter(BaseCRMAdapter):
         res = await self._request("GET", f"/crm1/orders/{order_id}")
         return self.from_provider_order(res.json())
 
+    async def get_orders(self, contact_id: str) -> list[Order]:
+        res = await self._request("GET", "/crm1/orders", params={"contact_id": contact_id})
+        records = res.json()
+        return [self.from_provider_order(r) for r in records]
+
     async def book_slot(self, slot: AppointmentSlot) -> AppointmentSlot:
         payload = self.to_provider_slot(slot)
         res = await self._request("POST", "/crm1/slots/book", json=payload)

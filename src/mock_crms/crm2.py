@@ -31,6 +31,10 @@ class CRM2FetchOrderRequest(BaseModel):
     orderId: str
 
 
+class CRM2QueryOrdersRequest(BaseModel):
+    customerId: Optional[str] = None
+
+
 class CRM2BookingDetail(BaseModel):
     slotId: str
     startEpochMs: int
@@ -127,6 +131,29 @@ def fetch_order(payload: CRM2FetchOrderRequest):
     return {
         "status": "SUCCESS",
         "orderDetails": order,
+    }
+
+
+@router.post("/queryOrders")
+def query_orders(payload: CRM2QueryOrdersRequest):
+    orders = list(data.crm2_data["orders"].values())
+    if payload.customerId:
+        orders = [o for o in orders if o.get("customerId") == payload.customerId]
+    return {
+        "status": "SUCCESS",
+        "orders": orders,
+    }
+
+
+@router.get("/orders")
+def get_orders_rest(customerId: Optional[str] = None, contact_id: Optional[str] = None):
+    cid = customerId or contact_id
+    orders = list(data.crm2_data["orders"].values())
+    if cid:
+        orders = [o for o in orders if o.get("customerId") == cid]
+    return {
+        "status": "SUCCESS",
+        "orders": orders,
     }
 
 

@@ -173,6 +173,12 @@ class CRM2Adapter(BaseCRMAdapter):
         res = await self._request("POST", "/crm2/api/v2/fetchOrder", json={"orderId": order_id})
         return self.from_provider_order(res.json())
 
+    async def get_orders(self, contact_id: str) -> list[Order]:
+        res = await self._request("POST", "/crm2/api/v2/queryOrders", json={"customerId": contact_id})
+        body = res.json()
+        orders = body.get("orders", [])
+        return [self.from_provider_order(o) for o in orders]
+
     async def book_slot(self, slot: AppointmentSlot) -> AppointmentSlot:
         payload = self.to_provider_slot(slot)
         res = await self._request("POST", "/crm2/api/v2/execBooking", json=payload)

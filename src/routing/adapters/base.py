@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -16,6 +15,7 @@ from src.domain.errors import (
     SlotConflictError,
     ValidationError,
 )
+from src.routing.credentials import RoutingCredentialStore, default_credential_store
 
 
 def parse_datetime(val: Any) -> datetime | None:
@@ -47,9 +47,11 @@ class BaseCRMAdapter(ABC):
         self,
         client: httpx.AsyncClient | httpx.Client | None = None,
         base_url: str | None = None,
+        credential_store: RoutingCredentialStore | None = None,
     ) -> None:
         self.client = client
         self.base_url = base_url
+        self.credential_store = credential_store or default_credential_store
 
     async def _request(
         self,
@@ -58,19 +60,28 @@ class BaseCRMAdapter(ABC):
         *,
         params: dict[str, Any] | None = None,
         json: Any = None,
+        headers: dict[str, str] | None = None,
     ) -> httpx.Response:
-        """Execute HTTP request against downstream provider with error normalization."""
+        """Execute HTTP request against downstream provider with credential injection and error normalization."""
         if self.client is None:
             raise ProviderUnavailableError(
                 message=f"No downstream HTTP client configured for target CRM '{self.crm_id}'",
                 target_crm=self.crm_id,
             )
 
+        req_headers = dict(headers or {})
+        if self.credential_store is not None:
+            req_headers.update(self.credential_store.get_auth_headers(self.crm_id))
+
         try:
             if isinstance(self.client, httpx.AsyncClient):
-                response = await self.client.request(method, path, params=params, json=json)
+                response = await self.client.request(
+                    method, path, params=params, json=json, headers=req_headers
+                )
             else:
-                response = self.client.request(method, path, params=params, json=json)
+                response = self.client.request(
+                    method, path, params=params, json=json, headers=req_headers
+                )
         except Exception as exc:
             raise ProviderUnavailableError(
                 message=f"Failed to communicate with provider CRM '{self.crm_id}': {exc}",
@@ -143,6 +154,11 @@ class BaseCRMAdapter(ABC):
         ...
 
     @abstractmethod
+    async def get_orders(self, contact_id: str) -> list[Order]:
+        """Fetch all orders for a contact ID."""
+        ...
+
+    @abstractmethod
     async def book_slot(self, slot: AppointmentSlot) -> AppointmentSlot:
         """Book an appointment slot on provider schedule."""
         ...
@@ -151,19 +167,3 @@ class BaseCRMAdapter(ABC):
     async def charge_payment(self, payment: Payment) -> Payment:
         """Charge a payment transaction in provider CRM."""
         ...
-
-    # Synchronous helpers for callers operating outside an async event loop
-    def get_contact_sync(self, contact_id: Optional[str] = None, email: Optional[str] = None) -> Contact:
-        return asyncio.run(self.get_contact(contact_id=contact_id, email=email))
-
-    def create_contact_sync(self, contact: ContactCreate) -> Contact:
-        return asyncio.run(self.create_contact(contact))
-
-    def get_order_sync(self, order_id: str) -> Order:
-        return asyncio.run(self.get_order(order_id))
-
-    def book_slot_sync(self, slot: AppointmentSlot) -> AppointmentSlot:
-        return asyncio.run(self.book_slot(slot))
-
-    def charge_payment_sync(self, payment: Payment) -> Payment:
-        return asyncio.run(self.charge_payment(payment))

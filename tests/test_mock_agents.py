@@ -22,15 +22,15 @@ class FakeCrmClient:
     def __init__(self):
         self.invocations: list[dict[str, Any]] = []
 
-    def get_contact(self, contact_id: str, target_crm: str | None = None) -> Contact:
-        self.invocations.append({"method": "get_contact", "contact_id": contact_id, "target_crm": target_crm})
-        if contact_id == "not_found":
-            raise EntityNotFoundError(f"Contact {contact_id} not found", target_crm=target_crm)
+    def get_contact(self, contact_id: str | None = None, email: str | None = None, target_crm: str | None = None) -> Contact:
+        self.invocations.append({"method": "get_contact", "contact_id": contact_id, "email": email, "target_crm": target_crm})
+        if contact_id == "not_found" or email == "not_found@example.com":
+            raise EntityNotFoundError(f"Contact {contact_id or email} not found", target_crm=target_crm)
         return Contact(
-            id=contact_id,
+            id=contact_id or "cnt_email_123",
             first_name="Jane",
             last_name="Doe",
-            email="jane@example.com",
+            email=email or "jane@example.com",
             company="Acme Corp",
         )
 
@@ -50,6 +50,19 @@ class FakeCrmClient:
             currency="USD",
             status="delivered",
         )
+
+    def get_orders(self, contact_id: str, target_crm: str | None = None) -> list[Order]:
+        self.invocations.append({"method": "get_orders", "contact_id": contact_id, "target_crm": target_crm})
+        return [
+            Order(
+                id="ord_mock_1",
+                contact_id=contact_id,
+                items=[OrderItem(name="Widget", quantity=1, unit_price=29.99)],
+                total_amount=29.99,
+                currency="USD",
+                status="delivered",
+            )
+        ]
 
     def book_slot(
         self,

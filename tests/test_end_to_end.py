@@ -236,6 +236,28 @@ def test_billing_agent_e2e_operations(
     assert flow_result["payment"].status == "completed"
 
 
+@pytest.mark.parametrize(
+    "crm_target,contact_id,expected_order_id",
+    [
+        ("crm_1", "cont_101", "ord_101"),
+        ("crm_2", "cnt_201", "ord_201"),
+        ("crm_3", "rec_301", "rec_ord_301"),
+    ],
+)
+def test_billing_agent_query_customer_orders_e2e(
+    client: CrmClient,
+    crm_target: str,
+    contact_id: str,
+    expected_order_id: str,
+) -> None:
+    """BillingAgent queries customer orders by contact ID across heterogeneous CRMs."""
+    agent = BillingAgent(client=client, target_crm=crm_target)
+    orders = agent.execute_tool("get_orders", {"contact_id": contact_id})
+    assert isinstance(orders, list)
+    assert len(orders) >= 1
+    assert orders[0].id == expected_order_id
+
+
 # ============================================================================
 # 4. Negative Error Scenarios Across All CRMs
 #    (EntityNotFoundError, SlotConflictError, PaymentFailedError)

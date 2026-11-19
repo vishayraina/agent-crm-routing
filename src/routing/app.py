@@ -21,6 +21,7 @@ from src.routing.adapters.registry import (
     get_default_downstream_client,
     normalize_target_crm,
 )
+from src.routing.credentials import RoutingCredentialStore, default_credential_store
 
 HTTP_422_STATUS = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
 
@@ -35,13 +36,14 @@ ERROR_STATUS_MAP: dict[type[CanonicalException], int] = {
 
 def resolve_target_crm(
     x_crm_target: Optional[str] = Header(default=None, alias="X-CRM-Target"),
+    target_crm: Optional[str] = Query(default=None),
     crm_target: Optional[str] = Query(default=None),
 ) -> str:
     """Dependency extracting and validating target CRM from header or query param."""
-    raw_target = x_crm_target or crm_target
+    raw_target = x_crm_target or target_crm or crm_target
     if not raw_target:
         raise ValidationError(
-            message="Target CRM must be specified via 'X-CRM-Target' header or 'crm_target' query param",
+            message="Target CRM must be specified via 'X-CRM-Target' header or 'target_crm' query param",
             details={"supported_targets": ["crm_1", "crm_2", "crm_3"]},
         )
 
@@ -60,6 +62,7 @@ def create_routing_app(
     downstream_client: httpx.AsyncClient | httpx.Client | None = None,
     mock_app: Any = None,
     base_url: str | None = None,
+    credential_store: RoutingCredentialStore | None = None,
 ) -> FastAPI:
     """Factory function creating the Central Routing Layer FastAPI application."""
     app = FastAPI(
@@ -80,8 +83,13 @@ def create_routing_app(
     else:
         app.state.downstream_client = get_default_downstream_client()
 
+    app.state.credential_store = credential_store or default_credential_store
+
     def get_client(request: Request) -> httpx.AsyncClient | httpx.Client:
         return getattr(request.app.state, "downstream_client", None) or get_default_downstream_client()
+
+    def get_credentials(request: Request) -> RoutingCredentialStore:
+        return getattr(request.app.state, "credential_store", None) or default_credential_store
 
     @app.exception_handler(CanonicalException)
     async def canonical_exception_handler(request: Request, exc: CanonicalException) -> JSONResponse:
@@ -115,7 +123,8 @@ def create_routing_app(
         target_crm: str = Depends(resolve_target_crm),
     ) -> Contact:
         client = get_client(request)
-        adapter = get_adapter(target_crm, client=client)
+        creds = get_credentials(request)
+        adapter = get_adapter(target_crm, client=client, credential_store=creds)
         return await adapter.get_contact(contact_id=contact_id, email=email)
 
     @app.post("/api/v1/contacts", response_model=Contact, status_code=status.HTTP_201_CREATED)
@@ -125,8 +134,20 @@ def create_routing_app(
         target_crm: str = Depends(resolve_target_crm),
     ) -> Contact:
         client = get_client(request)
-        adapter = get_adapter(target_crm, client=client)
+        creds = get_credentials(request)
+        adapter = get_adapter(target_crm, client=client, credential_store=creds)
         return await adapter.create_contact(payload)
+
+    @app.get("/api/v1/orders", response_model=list[Order])
+    async def get_orders(
+        request: Request,
+        contact_id: str = Query(..., description="Contact ID to query orders for"),
+        target_crm: str = Depends(resolve_target_crm),
+    ) -> list[Order]:
+        client = get_client(request)
+        creds = get_credentials(request)
+        adapter = get_adapter(target_crm, client=client, credential_store=creds)
+        return await adapter.get_orders(contact_id=contact_id)
 
     @app.get("/api/v1/orders/{order_id}", response_model=Order)
     async def get_order(
@@ -135,7 +156,8 @@ def create_routing_app(
         target_crm: str = Depends(resolve_target_crm),
     ) -> Order:
         client = get_client(request)
-        adapter = get_adapter(target_crm, client=client)
+        creds = get_credentials(request)
+        adapter = get_adapter(target_crm, client=client, credential_store=creds)
         return await adapter.get_order(order_id)
 
     @app.post("/api/v1/slots/book", response_model=AppointmentSlot, status_code=status.HTTP_201_CREATED)
@@ -145,7 +167,8 @@ def create_routing_app(
         target_crm: str = Depends(resolve_target_crm),
     ) -> AppointmentSlot:
         client = get_client(request)
-        adapter = get_adapter(target_crm, client=client)
+        creds = get_credentials(request)
+        adapter = get_adapter(target_crm, client=client, credential_store=creds)
         return await adapter.book_slot(slot)
 
     @app.post("/api/v1/payments/charge", response_model=Payment, status_code=status.HTTP_201_CREATED)
@@ -155,7 +178,8 @@ def create_routing_app(
         target_crm: str = Depends(resolve_target_crm),
     ) -> Payment:
         client = get_client(request)
-        adapter = get_adapter(target_crm, client=client)
+        creds = get_credentials(request)
+        adapter = get_adapter(target_crm, client=client, credential_store=creds)
         return await adapter.charge_payment(payment)
 
     return app

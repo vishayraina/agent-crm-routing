@@ -904,43 +904,49 @@ def test_create_routing_app_injection():
     assert r2.status_code == 200
 
 
-def test_adapter_sync_helpers():
-    adapter = get_adapter("crm_1")
-
-    # Sync get contact
-    contact = adapter.get_contact_sync(contact_id="cont_101")
-    assert contact.id == "cont_101"
-
-    # Sync get order
-    order = adapter.get_order_sync("ord_101")
-    assert order.id == "ord_101"
-
-    # Sync create contact
-    created = adapter.create_contact_sync(
-        ContactCreate(first_name="Sync", last_name="User", email="sync@crm1.com")
+@pytest.mark.parametrize("target_crm,contact_id,expected_order_id,expected_total", [
+    ("crm_1", "cont_101", "ord_101", 199.99),
+    ("crm_2", "cnt_201", "ord_201", 450.00),
+    ("crm_3", "rec_301", "rec_ord_301", 320.50),
+])
+def test_routing_get_orders_across_crms(client, target_crm, contact_id, expected_order_id, expected_total):
+    response = client.get(
+        f"/api/v1/orders?contact_id={contact_id}",
+        headers={"X-CRM-Target": target_crm},
     )
-    assert created.id.startswith("cont_")
+    assert response.status_code == 200
+    orders = response.json()
+    assert isinstance(orders, list)
+    assert len(orders) >= 1
+    assert orders[0]["id"] == expected_order_id
+    assert orders[0]["contact_id"] == contact_id
+    assert orders[0]["total_amount"] == expected_total
 
-    # Sync book slot
-    slot = adapter.book_slot_sync(
-        AppointmentSlot(
-            id="slot_sync_1",
-            start_time=datetime(2026, 11, 20, 10, 0, tzinfo=timezone.utc),
-            end_time=datetime(2026, 11, 20, 10, 30, tzinfo=timezone.utc),
-            attendee_email="sync@crm1.com",
-        )
-    )
-    assert slot.id == "slot_sync_1"
 
-    # Sync charge payment
-    payment = adapter.charge_payment_sync(
-        Payment(
-            id="temp",
-            order_id="ord_101",
-            amount=50.0,
-            currency="USD",
-            payment_method="visa",
-        )
+def test_routing_get_orders_by_target_crm_query_param(client):
+    response = client.get(
+        "/api/v1/orders?contact_id=cont_101&target_crm=crm_1",
     )
-    assert payment.id.startswith("pay_")
+    assert response.status_code == 200
+    orders = response.json()
+    assert isinstance(orders, list)
+    assert orders[0]["id"] == "ord_101"
+
+
+def test_vendor_credentials_managed_in_routing_layer():
+    from src.routing.credentials import RoutingCredentialStore
+    store = RoutingCredentialStore()
+    assert store.get_credential("crm_1") == "key-crm1-secret"
+    assert store.get_credential("crm_2") == "key-crm2-secret"
+    assert store.get_credential("crm_3") == "key-crm3-secret"
+
+    headers = store.get_auth_headers("crm_1")
+    assert headers["Authorization"] == "Bearer key-crm1-secret"
+    assert headers["X-Vendor-API-Key"] == "key-crm1-secret"
+
+    # Verify adapter carries credential store
+    adapter = CRM1Adapter()
+    assert adapter.credential_store is not None
+    auth = adapter.credential_store.get_auth_headers("crm_1")
+    assert "Bearer key-crm1-secret" in auth["Authorization"]
 

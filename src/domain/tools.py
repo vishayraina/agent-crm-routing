@@ -6,7 +6,7 @@ GET_CONTACT_TOOL: dict[str, Any] = {
     "type": "function",
     "function": {
         "name": "get_contact",
-        "description": "Fetch customer contact details by ID from the target CRM.",
+        "description": "Fetch contact details by ID from the target CRM.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -14,8 +14,11 @@ GET_CONTACT_TOOL: dict[str, Any] = {
                     "type": "string",
                     "description": "Unique identifier of the contact to fetch.",
                 },
+                "email": {
+                    "type": "string",
+                    "description": "Optional email address of the contact to fetch.",
+                },
             },
-            "required": ["contact_id"],
         },
     },
 }
@@ -24,7 +27,7 @@ CREATE_CONTACT_TOOL: dict[str, Any] = {
     "type": "function",
     "function": {
         "name": "create_contact",
-        "description": "Create a new lead or contact record in the target CRM.",
+        "description": "Create a new contact record in the target CRM.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -68,6 +71,24 @@ CHECK_ORDER_TOOL: dict[str, Any] = {
                 },
             },
             "required": ["order_id"],
+        },
+    },
+}
+
+GET_ORDERS_TOOL: dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "get_orders",
+        "description": "Fetch all orders associated with a contact ID from the target CRM.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "contact_id": {
+                    "type": "string",
+                    "description": "Unique identifier of the contact whose orders to fetch.",
+                },
+            },
+            "required": ["contact_id"],
         },
     },
 }
@@ -121,7 +142,7 @@ TAKE_PAYMENT_TOOL: dict[str, Any] = {
                 },
                 "payment_method": {
                     "type": "string",
-                    "description": "Payment method identifier (e.g. credit_card, invoice). Default is credit_card.",
+                    "description": "Payment method identifier (e.g. credit_card, bank_transfer). Default is credit_card.",
                     "default": "credit_card",
                 },
             },
@@ -134,6 +155,7 @@ ALL_TOOLS: dict[str, dict[str, Any]] = {
     "get_contact": GET_CONTACT_TOOL,
     "create_contact": CREATE_CONTACT_TOOL,
     "check_order": CHECK_ORDER_TOOL,
+    "get_orders": GET_ORDERS_TOOL,
     "book_slot": BOOK_SLOT_TOOL,
     "take_payment": TAKE_PAYMENT_TOOL,
 }

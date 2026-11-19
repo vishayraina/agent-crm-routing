@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from src.client.crm_client import (
     AppointmentsNamespace,
+    AsyncCrmClient,
     ContactsNamespace,
     CrmClient,
     OrdersNamespace,
@@ -10,6 +11,7 @@ from src.client.crm_client import (
 
 __all__ = [
     "CrmClient",
+    "AsyncCrmClient",
     "ContactsNamespace",
     "OrdersNamespace",
     "AppointmentsNamespace",

@@ -8,16 +8,29 @@ from src.domain.models import Contact, ContactCreate, Order, AppointmentSlot, Pa
 class CrmClientProtocol(Protocol):
     """Protocol defining the singular Client SDK contract required by Mock Agents."""
 
-    def get_contact(self, contact_id: str, target_crm: str | None = None) -> Contact:
-        """Fetch contact details by contact ID."""
+    def get_contact(
+        self,
+        contact_id: str | None = None,
+        email: str | None = None,
+        target_crm: str | None = None,
+    ) -> Contact:
+        """Fetch contact details by contact ID or email."""
         ...
 
-    def create_contact(self, contact_data: dict[str, Any] | ContactCreate, target_crm: str | None = None) -> Contact:
+    def create_contact(
+        self,
+        contact_data: dict[str, Any] | ContactCreate,
+        target_crm: str | None = None,
+    ) -> Contact:
         """Create a new contact in the target CRM."""
         ...
 
     def check_order(self, order_id: str, target_crm: str | None = None) -> Order:
         """Fetch order details and shipment status by order ID."""
+        ...
+
+    def get_orders(self, contact_id: str, target_crm: str | None = None) -> list[Order]:
+        """Fetch all orders associated with a contact ID."""
         ...
 
     def book_slot(

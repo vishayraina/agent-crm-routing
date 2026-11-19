@@ -9,6 +9,7 @@ from src.routing.adapters.base import BaseCRMAdapter
 from src.routing.adapters.crm1 import CRM1Adapter
 from src.routing.adapters.crm2 import CRM2Adapter
 from src.routing.adapters.crm3 import CRM3Adapter
+from src.routing.credentials import RoutingCredentialStore
 
 _DEFAULT_DOWNSTREAM_CLIENT: Optional[httpx.AsyncClient] = None
 
@@ -41,17 +42,18 @@ def normalize_target_crm(raw: str | None) -> str:
 def get_adapter(
     target_crm: str,
     client: httpx.AsyncClient | httpx.Client | None = None,
+    credential_store: RoutingCredentialStore | None = None,
 ) -> BaseCRMAdapter:
     """Resolve and instantiate a CRM provider adapter for the given target CRM."""
     norm_target = normalize_target_crm(target_crm)
     effective_client = client or get_default_downstream_client()
 
     if norm_target == "crm_1":
-        return CRM1Adapter(client=effective_client)
+        return CRM1Adapter(client=effective_client, credential_store=credential_store)
     if norm_target == "crm_2":
-        return CRM2Adapter(client=effective_client)
+        return CRM2Adapter(client=effective_client, credential_store=credential_store)
     if norm_target == "crm_3":
-        return CRM3Adapter(client=effective_client)
+        return CRM3Adapter(client=effective_client, credential_store=credential_store)
 
     raise ValidationError(
         message=f"Unknown target CRM '{target_crm}'. Supported targets: crm_1, crm_2, crm_3",

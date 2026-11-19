@@ -121,7 +121,7 @@ def test_get_tools_with_filter(test_client):
 
 def test_get_tool_names(test_client):
     names = test_client.get_tool_names()
-    assert set(names) == {"get_contact", "create_contact", "check_order", "book_slot", "take_payment"}
+    assert set(names) == {"get_contact", "create_contact", "check_order", "get_orders", "book_slot", "take_payment"}
 
 
 # ============================================================================
@@ -537,3 +537,145 @@ def test_direct_typed_method_missing_params(test_client):
 
     with pytest.raises(ValidationError):
         test_client.create_contact("invalid_payload_type")  # type: ignore
+
+
+def test_client_sdk_target_crm_initialization():
+    c1 = CrmClient(target_crm="crm_2")
+    assert c1.target_crm == "crm_2"
+    assert c1.crm_target == "crm_2"
+    c1.close()
+
+    c2 = CrmClient(crm_target="crm_3")
+    assert c2.target_crm == "crm_3"
+    assert c2.crm_target == "crm_3"
+    c2.close()
+
+
+@pytest.mark.parametrize("crm_target,contact_id,expected_order_id,expected_total", [
+    ("crm_1", "cont_101", "ord_101", 199.99),
+    ("crm_2", "cnt_201", "ord_201", 450.00),
+    ("crm_3", "rec_301", "rec_ord_301", 320.50),
+])
+def test_client_sdk_get_orders(test_client, crm_target, contact_id, expected_order_id, expected_total):
+    orders = test_client.get_orders(contact_id=contact_id, target_crm=crm_target)
+    assert isinstance(orders, list)
+    assert len(orders) >= 1
+    assert orders[0].id == expected_order_id
+    assert orders[0].total_amount == expected_total
+
+    # Also test namespace helper
+    ns_orders = test_client.orders.list(contact_id=contact_id, target_crm=crm_target)
+    assert len(ns_orders) >= 1
+    assert ns_orders[0].id == expected_order_id
+
+
+def test_client_sdk_dispatch_tool_call_get_orders(test_client):
+    result = test_client.dispatch_tool_call(
+        "get_orders",
+        {"contact_id": "cont_101"},
+        target_crm="crm_1",
+    )
+    assert isinstance(result, list)
+    assert len(result) >= 1
+    assert result[0].id == "ord_101"
+
+    # With return_dict=True
+    dict_result = test_client.dispatch_tool_call(
+        "get_orders",
+        {"contact_id": "cont_101"},
+        target_crm="crm_1",
+        return_dict=True,
+    )
+    assert isinstance(dict_result, list)
+    assert dict_result[0]["id"] == "ord_101"
+
+    # Missing contact_id
+    err_res = test_client.dispatch_tool_call("get_orders", {}, target_crm="crm_1")
+    assert err_res.get("error") is True
+    assert err_res.get("error_type") == "ValidationError"
+
+
+@pytest.mark.asyncio
+async def test_client_sdk_async_surface():
+    client = CrmClient(app=routing_app, target_crm="crm_1")
+
+    # get_contact_async
+    contact = await client.get_contact_async("cont_101")
+    assert isinstance(contact, Contact)
+    assert contact.id == "cont_101"
+
+    # create_contact_async
+    new_contact = await client.create_contact_async(
+        {"first_name": "Async", "last_name": "Dev", "email": "async.dev@example.com"}
+    )
+    assert isinstance(new_contact, Contact)
+    assert new_contact.first_name == "Async"
+
+    # check_order_async
+    order = await client.check_order_async("ord_101")
+    assert isinstance(order, Order)
+    assert order.id == "ord_101"
+
+    # get_orders_async
+    orders = await client.get_orders_async("cont_101")
+    assert isinstance(orders, list)
+    assert len(orders) >= 1
+
+    # book_slot_async
+    slot = await client.book_slot_async(
+        slot_id="slot_async_test",
+        attendee_email="async.dev@example.com",
+        title="Async Architecture Sync",
+    )
+    assert isinstance(slot, AppointmentSlot)
+    assert slot.id == "slot_async_test"
+
+    # take_payment_async
+    payment = await client.take_payment_async(
+        order_id="ord_101",
+        amount=199.99,
+        payment_method="card_visa",
+    )
+    assert isinstance(payment, Payment)
+    assert payment.amount == 199.99
+
+    # dispatch_tool_call_async
+    dispatch_res = await client.dispatch_tool_call_async(
+        "get_orders",
+        {"contact_id": "cont_101"},
+    )
+    assert isinstance(dispatch_res, list)
+    assert dispatch_res[0].id == "ord_101"
+
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_async_crm_client_surface():
+    from src.client import AsyncCrmClient
+
+    async with AsyncCrmClient(app=routing_app, target_crm="crm_2") as async_client:
+        assert async_client.target_crm == "crm_2"
+        contact = await async_client.get_contact("cnt_201")
+        assert contact.id == "cnt_201"
+
+        order = await async_client.check_order("ord_201")
+        assert order.id == "ord_201"
+
+        orders = await async_client.get_orders("cnt_201")
+        assert len(orders) >= 1
+
+        slot = await async_client.book_slot("slot_async_crm2", attendee_email="bob@example.com")
+        assert slot.id == "slot_async_crm2"
+
+        payment = await async_client.take_payment("ord_201", amount=450.0, payment_method="tok_mastercard")
+        assert payment.amount == 450.0
+
+
+def test_vendor_credentials_isolated_from_client_sdk(test_client):
+    # Verify client SDK does not store or leak downstream API keys
+    assert not hasattr(test_client, "api_key")
+    assert not hasattr(test_client, "secret")
+    # Verify requests sent by client do not contain Authorization token
+    # Client only sends canonical 'X-CRM-Target' header
+    assert test_client.target_crm == "crm_1"

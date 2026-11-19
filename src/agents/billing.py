@@ -6,9 +6,9 @@ from src.domain.models import Contact, Order, Payment
 
 
 class BillingAgent(BaseAgent):
-    """Mock Billing Agent with tool signatures for get_contact, check_order, and take_payment."""
+    """Mock Billing Agent with tool signatures for get_contact, check_order, get_orders, and take_payment."""
 
-    declared_tools: list[str] = ["get_contact", "check_order", "take_payment"]
+    declared_tools: list[str] = ["get_contact", "check_order", "get_orders", "take_payment"]
 
     def run_deterministic_flow(
         self,
