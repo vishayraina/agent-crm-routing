@@ -6,10 +6,9 @@ Create the singular Client SDK (`CrmClient`) used by all agentic applications to
 **Blocked by:**
 03: Central Routing Layer & CRM Provider Adapters
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] CrmClient class initializes with `base_url` and `crm_target` (e.g. `crm_1`, `crm_2`, `crm_3`).
-- [ ] Direct typed methods implemented for `get_contact`, `create_contact`, `check_order`, `book_slot`, and `take_payment`.
-- [ ] Tool registry generates standard JSON schemas compatible with LLM function-calling declarations.
-- [ ] `dispatch_tool_call(name, arguments)` dispatches tool execution and returns serialized canonical model or structured error JSON.
-
+- [x] CrmClient class initializes with `base_url` and `crm_target` (e.g. `crm_1`, `crm_2`, `crm_3`).
+- [x] Direct typed methods implemented for `get_contact`, `create_contact`, `check_order`, `book_slot`, and `take_payment`.
+- [x] Tool registry generates standard JSON schemas compatible with LLM function-calling declarations.
+- [x] `dispatch_tool_call(name, arguments)` dispatches tool execution and returns serialized canonical model or structured error JSON.
