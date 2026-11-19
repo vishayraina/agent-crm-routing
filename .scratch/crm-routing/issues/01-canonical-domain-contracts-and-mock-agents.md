@@ -6,10 +6,10 @@ Define the canonical domain models representing Contacts, Orders, Appointment Sl
 **Blocked by:**
 None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Pydantic canonical models created for Contact, Order, AppointmentSlot, Payment, and CanonicalError.
-- [ ] SupportAgent class created with tool signatures for `get_contact` and `check_order`, plus a deterministic test invocation run.
-- [ ] SchedulingAgent class created with tool signatures for `create_contact` and `book_slot`, plus a deterministic test invocation run.
-- [ ] BillingAgent class created with tool signatures for `get_contact`, `check_order`, and `take_payment`, plus a deterministic test invocation run.
+- [x] Pydantic canonical models created for Contact, Order, AppointmentSlot, Payment, and CanonicalError.
+- [x] SupportAgent class created with tool signatures for `get_contact` and `check_order`, plus a deterministic test invocation run.
+- [x] SchedulingAgent class created with tool signatures for `create_contact` and `book_slot`, plus a deterministic test invocation run.
+- [x] BillingAgent class created with tool signatures for `get_contact`, `check_order`, and `take_payment`, plus a deterministic test invocation run.
 
